@@ -1,7 +1,7 @@
 import twilio from 'twilio';
 import { twilioClient } from './twilioClient.js';
 import { ringViaSip } from './sipCallService.js';
-import { env } from '../config/index.js';
+import { env, callers } from '../config/index.js';
 import { logger } from '../utils/index.js';
 import type { VoiceCallOptions, CallResult } from '../types/index.js';
 
@@ -28,6 +28,10 @@ export function generateTwiML(message: string): string {
 async function makeCallViaTwilio(options: VoiceCallOptions): Promise<CallResult> {
   const { to, message } = options;
 
+  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_PHONE_NUMBER) {
+    return { success: false, error: 'Twilio credentials not configured' };
+  }
+
   const twimlContent = generateTwiML(message);
   logger.info({ to, provider: 'twilio' }, 'Initiating voice call');
 
@@ -44,10 +48,7 @@ async function makeCallViaTwilio(options: VoiceCallOptions): Promise<CallResult>
     const twilioError = error as { code?: number; message?: string };
     logger.error({ error: twilioError, to }, 'Twilio call failed');
 
-    const errorMessage = twilioError.code
-      ? TWILIO_ERROR_MESSAGES[twilioError.code]
-      : undefined;
-
+    const errorMessage = twilioError.code ? TWILIO_ERROR_MESSAGES[twilioError.code] : undefined;
     return {
       success: false,
       error: errorMessage || twilioError.message || 'Failed to initiate call',
@@ -56,11 +57,13 @@ async function makeCallViaTwilio(options: VoiceCallOptions): Promise<CallResult>
   }
 }
 
-
 async function makeCallViaSip(): Promise<CallResult> {
-  logger.info({ provider: 'sip' }, 'Initiating SIP ring');
-  const result = await ringViaSip();
-  return result;
+  const caller = callers[0];
+  if (!caller) {
+    return { success: false, error: 'No caller configured in callers.json' };
+  }
+  logger.info({ provider: 'sip', caller: caller.id }, 'Initiating SIP ring');
+  return ringViaSip(caller);
 }
 
 export async function makeCall(options: VoiceCallOptions): Promise<CallResult> {

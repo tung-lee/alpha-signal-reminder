@@ -1,0 +1,12 @@
+{
+  "discord": [
+    {
+      "guild_id": "1360888008630341632",
+      "name": "Alpha",
+      "channels": [
+        { "id": "1506695174536040570", "name": "lucas-calls",    "caller": "degen", "cooldown_ms": 60000 },
+        { "id": "1506695178549727232",        "name": "falcon-calls",      "caller": "degen",   "cooldown_ms": 60000  }
+      ]
+    }
+  ]
+}

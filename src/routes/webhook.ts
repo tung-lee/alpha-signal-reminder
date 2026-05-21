@@ -6,6 +6,11 @@ const router = Router();
 
 router.get('/webhook', async (req, res, next) => {
   try {
+    if (!env.CALL_TO_NUMBER) {
+      res.status(400).json({ success: false, error: 'CALL_TO_NUMBER not configured' });
+      return;
+    }
+
     const result = await makeCall({
       to: env.CALL_TO_NUMBER,
       message: 'You have a new alert.',

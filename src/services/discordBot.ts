@@ -1,20 +1,18 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import { env } from '../config/index.js';
+import { env, callers, findDiscordChannel } from '../config/index.js';
+
 import { logger } from '../utils/index.js';
-import { makeCall } from './voiceService.js';
-import { sendSipMessage } from './sipCallService.js';
+import { ringViaSip, sendSipMessage } from './sipCallService.js';
 
 class CallCooldown {
   private lastCallTime = 0;
 
-  isInCooldown(): boolean {
-    const now = Date.now();
-    return now - this.lastCallTime < env.DISCORD_COOLDOWN_MS;
+  isInCooldown(cooldown_ms: number): boolean {
+    return Date.now() - this.lastCallTime < cooldown_ms;
   }
 
-  getRemainingSeconds(): number {
-    const now = Date.now();
-    return Math.ceil((env.DISCORD_COOLDOWN_MS - (now - this.lastCallTime)) / 1000);
+  getRemainingSeconds(cooldown_ms: number): number {
+    return Math.ceil((cooldown_ms - (Date.now() - this.lastCallTime)) / 1000);
   }
 
   reset(): void {
@@ -22,7 +20,12 @@ class CallCooldown {
   }
 }
 
-const cooldown = new CallCooldown();
+const cooldowns = new Map<string, CallCooldown>();
+
+function getCooldown(channelId: string): CallCooldown {
+  if (!cooldowns.has(channelId)) cooldowns.set(channelId, new CallCooldown());
+  return cooldowns.get(channelId)!;
+}
 
 const client = new Client({
   intents: [
@@ -37,30 +40,39 @@ client.once('clientReady', () => {
 });
 
 client.on('messageCreate', async (message) => {
-  if (env.DISCORD_CHANNEL_ID && message.channelId !== env.DISCORD_CHANNEL_ID) return;
+  const channel = findDiscordChannel(message.guildId, message.channelId);
+  if (!channel) return;
 
-  if (cooldown.isInCooldown()) {
+  const caller = callers.find(c => c.id === channel.caller);
+  if (!caller) {
+    logger.warn({ callerId: channel.caller, guild: message.guildId, channel: message.channelId }, 'Caller config not found in callers.json');
+    return;
+  }
+
+  const cooldown = getCooldown(message.channelId);
+  if (cooldown.isInCooldown(channel.cooldown_ms)) {
     logger.debug(
-      { remaining: cooldown.getRemainingSeconds() },
-      'Discord message received — call skipped (cooldown)'
+      { remaining: cooldown.getRemainingSeconds(channel.cooldown_ms), caller: caller.id, channel: message.channelId },
+      'Discord message received — call skipped (cooldown)',
     );
     return;
   }
 
   cooldown.reset();
   logger.info(
-    { channel: message.channelId, author: message.author.tag },
-    'Discord message — triggering call'
+    { channel: channel.name, caller: caller.id, author: message.author.tag },
+    'Discord message — triggering call',
   );
 
   const preview = message.content.slice(0, 200);
   const [, callResult] = await Promise.all([
-    sendSipMessage(`[Discord] ${message.author.tag}: ${preview}`),
-    makeCall({ to: env.CALL_TO_NUMBER, message: 'You have a new message in Discord.' }),
+    sendSipMessage(`[Discord/${caller.id}] ${message.author.tag}: ${preview}`, caller),
+    ringViaSip(caller),
   ]);
 
+
   if (!callResult.success) {
-    logger.error({ error: callResult.error }, 'Discord-triggered call failed');
+    logger.error({ error: callResult.error, caller: caller.id }, 'Discord-triggered call failed');
   }
 });
 
