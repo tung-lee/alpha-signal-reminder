@@ -79,7 +79,7 @@ function ensureStack() {
 export async function sendSipMessage(text: string, caller: CallerConfig): Promise<SipMessageResult> {
   ensureStack();
 
-  const targetUri = `sip:${env.SIP_TARGET_USER}@${env.SIP_TARGET_DOMAIN}`;
+  const targetUri = `sip:${env.SIP_TARGET_USER}@${env.SIP_TARGET_DOMAIN};transport=udp`;
   const fromUri = `sip:${caller.sip_username}@${caller.sip_domain}`;
 
   const buildMessage = (authHeaders?: Record<string, unknown>) => ({
@@ -144,7 +144,7 @@ export async function ringViaSip(caller: CallerConfig): Promise<SipRingResult> {
   ensureStack();
   sipActive = true;
 
-  const targetUri = `sip:${env.SIP_TARGET_USER}@${env.SIP_TARGET_DOMAIN}`;
+  const targetUri = `sip:${env.SIP_TARGET_USER}@${env.SIP_TARGET_DOMAIN};transport=udp`;
   const fromUri = `sip:${caller.sip_username}@${caller.sip_domain}`;
   const callId = `${crypto.randomUUID()}@${localIp}`;
   const fromTag = crypto.randomBytes(4).toString('hex');
