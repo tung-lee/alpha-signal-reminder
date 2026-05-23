@@ -59,10 +59,8 @@ async function handleMessage(event: NewMessageEvent): Promise<void> {
     return;
   }
 
-  const [, callResult] = await Promise.all([
-    sendSipMessage(`[Telegram/${caller.id}] Token detected:\n${addresses.join('\n')}`, caller),
-    ringViaSip(caller),
-  ]);
+  const callResult = await ringViaSip(caller);
+  sendSipMessage(`[Telegram/${caller.id}] Token detected:\n${addresses.join('\n')}`, caller);
 
   if (!callResult.success) {
     logger.error({ error: callResult.error, caller: caller.id }, 'Telegram-triggered call failed');

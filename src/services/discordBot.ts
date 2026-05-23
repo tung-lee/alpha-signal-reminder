@@ -64,11 +64,16 @@ client.on('messageCreate', async (message) => {
     'Discord message — triggering call',
   );
 
-  const preview = message.content.slice(0, 200);
-  const [, callResult] = await Promise.all([
-    sendSipMessage(`[Discord/${caller.id}] ${message.author.tag}: ${preview}`, caller),
-    ringViaSip(caller),
-  ]);
+  let preview = message.content;
+  if (!preview && message.embeds.length > 0) {
+    const embed = message.embeds[0];
+    const parts = [embed.title, embed.description, ...embed.fields.map(f => `${f.name}: ${f.value}`)].filter(Boolean);
+    preview = parts.join(' | ');
+  }
+  preview = preview.slice(0, 200);
+
+  const callResult = await ringViaSip(caller);
+  sendSipMessage(`[Discord/${caller.id}] ${message.author.tag}: ${preview}`, caller);
 
 
   if (!callResult.success) {

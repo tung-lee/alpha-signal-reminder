@@ -6,7 +6,8 @@
       "channels": [
         { "id": "1506695174536040570", "name": "lucas-calls",    "caller": "degen", "cooldown_ms": 60000 },
         { "id": "1506695178549727232",        "name": "falcon-calls",      "caller": "degen",   "cooldown_ms": 60000  },
-        { "id": "1507032736920244308",        "name": "future-calls",      "caller": "degen",   "cooldown_ms": 60000  }
+        { "id": "1507032736920244308",        "name": "future-calls",      "caller": "future",   "cooldown_ms": 60000  },
+        { "id": "1492806680289874001",        "name": "early-ev+",      "caller": "early",   "cooldown_ms": 60000  }
       ]
     }
   ]
